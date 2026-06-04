@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DesignAI KZ — AI-ассистент для дизайнеров Казахстана</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #0D1B35;
+  --navy2: #152240;
+  --gold: #C9A84C;
+  --gold-light: #E8C87A;
+  --gold-pale: #F5E9C8;
+  --teal: #1A7F6E;
+  --teal-light: #2ABEAA;
+  --white: #FAFAF8;
+  --muted: #8A9BB0;
+  --border: rgba(201,168,76,0.2);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--navy);
+  color: var(--white);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── GRAIN OVERLAY ── */
+body::before {
+  content:'';
+  position:fixed; inset:0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.035'/%3E%3C/svg%3E");
+  pointer-events:none; z-index:0; opacity:0.4;
+}
+
+/* ── BACKGROUND SHAPES ── */
+.bg-orb {
+  position:fixed; border-radius:50%;
+  filter: blur(80px); pointer-events:none; z-index:0;
+}
+.bg-orb-1 { width:500px; height:500px; background:rgba(201,168,76,0.06); top:-150px; right:-100px; }
+.bg-orb-2 { width:400px; height:400px; background:rgba(26,127,110,0.07); bottom:-100px; left:-100px; }
+.bg-orb-3 { width:300px; height:300px; background:rgba(74,144,196,0.05); top:40%; left:30%; }
+
+/* ── LAYOUT ── */
+.app { position:relative; z-index:1; max-width:1100px; margin:0 auto; padding:0 24px; }
+
+/* ── HEADER ── */
+header {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:28px 0 24px;
+  border-bottom: 1px solid var(--border);
+}
+.logo {
+  display:flex; align-items:center; gap:12px;
+}
+.logo-icon {
+  width:42px; height:42px;
+  background: linear-gradient(135deg, var(--gold), var(--gold-light));
+  border-radius:10px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:20px;
+}
+.logo-text h1 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size:22px; font-weight:700;
+  color:var(--white); letter-spacing:0.3px;
+}
+.logo-text p {
+  font-size:11px; color:var(--muted); margin-top:1px;
+}
+.header-badge {
+  display:flex; gap:8px; align-items:center;
+}
+.badge {
+  padding:5px 12px; border-radius:20px; font-size:11px; font-weight:500;
+  border:1px solid; cursor:default;
+}
+.badge-gold { border-color:rgba(201,168,76,0.4); color:var(--gold-light); background:rgba(201,168,76,0.08); }
+.badge-teal { border-color:rgba(26,127,110,0.4); color:var(--teal-light); background:rgba(26,127,110,0.08); }
+
+/* ── HERO ── */
+.hero {
+  text-align:center;
+  padding:56px 0 40px;
+}
+.hero-tag {
+  display:inline-block;
+  font-size:11px; font-weight:500; letter-spacing:2px; text-transform:uppercase;
+  color:var(--gold); margin-bottom:20px;
+  padding:6px 16px; border:1px solid var(--border); border-radius:20px;
+}
+.hero h2 {
+  font-family:'Cormorant Garamond', serif;
+  font-size:clamp(32px,5vw,52px); font-weight:700;
+  line-height:1.15; margin-bottom:16px;
+}
+.hero h2 em { color:var(--gold-light); font-style:normal; }
+.hero p {
+  font-size:15px; color:var(--muted); max-width:560px;
+  margin:0 auto 40px; line-height:1.7;
+}
+
+/* ── TABS ── */
+.tabs {
+  display:flex; gap:4px; justify-content:center; margin-bottom:36px;
+  background:rgba(255,255,255,0.04); border-radius:12px; padding:4px;
+  max-width:600px; margin-left:auto; margin-right:auto; margin-bottom:40px;
+}
+.tab {
+  flex:1; padding:10px 16px; border-radius:9px; border:none;
+  background:transparent; color:var(--muted); font-family:'DM Sans',sans-serif;
+  font-size:13px; font-weight:500; cursor:pointer;
+  transition:all 0.25s; display:flex; align-items:center; justify-content:center; gap:7px;
+}
+.tab.active {
+  background:var(--navy2); color:var(--white);
+  box-shadow:0 2px 12px rgba(0,0,0,0.3);
+}
+.tab-icon { font-size:16px; }
+
+/* ── PANELS ── */
+.panel { display:none; }
+.panel.active { display:block; animation: fadeUp 0.35s ease; }
+@keyframes fadeUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+
+/* ── TOOL: PROMPT GENERATOR ── */
+.tool-grid {
+  display:grid; grid-template-columns:1fr 1fr; gap:20px;
+}
+.tool-card {
+  background:rgba(255,255,255,0.04);
+  border:1px solid rgba(255,255,255,0.08);
+  border-radius:16px; padding:24px;
+}
+.tool-card.full { grid-column:1/-1; }
+.tool-card h3 {
+  font-family:'Cormorant Garamond',serif;
+  font-size:18px; font-weight:600; margin-bottom:16px;
+  color:var(--gold-pale);
+}
+
+/* form elements */
+.field { margin-bottom:16px; }
+.field label {
+  display:block; font-size:12px; font-weight:500;
+  color:var(--muted); margin-bottom:7px; letter-spacing:0.5px; text-transform:uppercase;
+}
+.field input, .field textarea, .field select {
+  width:100%; background:rgba(255,255,255,0.05);
+  border:1px solid rgba(255,255,255,0.1); border-radius:10px;
+  color:var(--white); font-family:'DM Sans',sans-serif; font-size:14px;
+  padding:11px 14px; transition:border-color 0.2s; resize:none;
+  outline:none;
+}
+.field input:focus, .field textarea:focus, .field select {
+  border-color:rgba(201,168,76,0.5);
+}
+.field select option { background:#1a2d50; }
+
+.chips { display:flex; flex-wrap:wrap; gap:7px; margin-top:8px; }
+.chip {
+  padding:5px 12px; border-radius:20px; font-size:12px; cursor:pointer;
+  border:1px solid rgba(255,255,255,0.12); color:var(--muted);
+  transition:all 0.2s; user-select:none;
+}
+.chip:hover { border-color:var(--gold); color:var(--gold-light); }
+.chip.selected { background:rgba(201,168,76,0.15); border-color:var(--gold); color:var(--gold-light); }
+
+/* ── GENERATE BUTTON ── */
+.btn-main {
+  width:100%; padding:15px 28px; border-radius:12px; border:none;
+  background: linear-gradient(135deg, #C9A84C, #E8C87A);
+  color:#0D1B35; font-family:'DM Sans',sans-serif;
+  font-size:15px; font-weight:700; cursor:pointer;
+  transition:all 0.25s; position:relative; overflow:hidden;
+  letter-spacing:0.3px; margin-top:4px;
+}
+.btn-main:hover { transform:translateY(-2px); box-shadow:0 8px 30px rgba(201,168,76,0.3); }
+.btn-main:active { transform:translateY(0); }
+.btn-main:disabled { opacity:0.5; cursor:not-allowed; transform:none; }
+
+/* ── OUTPUT ── */
+.output-section { margin-top:24px; }
+.output-block {
+  background:rgba(255,255,255,0.03);
+  border:1px solid rgba(255,255,255,0.08); border-radius:14px;
+  padding:20px; margin-bottom:16px;
+  animation: fadeUp 0.4s ease;
+}
+.output-block-header {
+  display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;
+}
+.output-block-title {
+  display:flex; align-items:center; gap:8px;
+  font-size:12px; font-weight:500; text-transform:uppercase;
+  letter-spacing:1px; color:var(--muted);
+}
+.output-dot {
+  width:8px; height:8px; border-radius:50%;
+}
+.copy-btn {
+  padding:5px 12px; border-radius:8px; border:1px solid rgba(255,255,255,0.15);
+  background:transparent; color:var(--muted); font-size:11px; cursor:pointer;
+  transition:all 0.2s; font-family:'DM Sans',sans-serif;
+}
+.copy-btn:hover { border-color:var(--gold); color:var(--gold-light); }
+.output-text {
+  font-size:14px; line-height:1.75; color:#d0e0f0;
+  white-space:pre-wrap; word-break:break-word;
+}
+.output-text strong { color:var(--gold-light); }
+.output-text em { color:var(--teal-light); font-style:normal; }
+
+/* ── TOOL RATING ── */
+.tools-grid {
+  display:grid; grid-template-columns:repeat(3,1fr); gap:14px;
+  margin-top:4px;
+}
+.tool-item {
+  background:rgba(255,255,255,0.04);
+  border:1px solid rgba(255,255,255,0.08); border-radius:12px;
+  padding:16px; cursor:pointer; transition:all 0.25s;
+  position:relative; overflow:hidden;
+}
+.tool-item:hover { border-color:rgba(201,168,76,0.4); transform:translateY(-2px); }
+.tool-item.featured { border-color:rgba(201,168,76,0.3); background:rgba(201,168,76,0.05); }
+.tool-badge-feat {
+  position:absolute; top:10px; right:10px;
+  font-size:9px; padding:3px 8px; border-radius:10px;
+  background:rgba(201,168,76,0.2); color:var(--gold-light); font-weight:600;
+}
+.tool-emoji { font-size:26px; margin-bottom:8px; display:block; }
+.tool-name { font-size:14px; font-weight:600; color:var(--white); margin-bottom:4px; }
+.tool-desc { font-size:11px; color:var(--muted); line-height:1.5; }
+.tool-level {
+  display:flex; gap:3px; margin-top:8px;
+}
+.level-dot {
+  width:16px; height:4px; border-radius:2px;
+  background:rgba(255,255,255,0.12);
+}
+.level-dot.filled { background:var(--gold); }
+
+/* ── LEVEL CHECKER ── */
+.level-form { max-width:600px; margin:0 auto; }
+.level-q { margin-bottom:20px; }
+.level-q p { font-size:14px; color:#c0d4e8; margin-bottom:10px; line-height:1.5; }
+.level-options { display:flex; gap:8px; flex-wrap:wrap; }
+.level-opt {
+  padding:8px 16px; border-radius:8px; border:1px solid rgba(255,255,255,0.1);
+  color:var(--muted); font-size:13px; cursor:pointer; transition:all 0.2s;
+  background:transparent; font-family:'DM Sans',sans-serif;
+}
+.level-opt:hover { border-color:var(--gold); color:var(--gold-light); }
+.level-opt.sel { background:rgba(201,168,76,0.12); border-color:var(--gold); color:var(--gold-light); }
+
+.result-bar { margin-bottom:10px; }
+.result-bar-label { display:flex; justify-content:space-between; margin-bottom:5px; }
+.result-bar-name { font-size:12px; color:var(--muted); }
+.result-bar-val { font-size:12px; font-weight:600; color:var(--gold-light); }
+.bar-track { height:8px; background:rgba(255,255,255,0.08); border-radius:4px; overflow:hidden; }
+.bar-fill { height:100%; border-radius:4px; transition:width 0.8s cubic-bezier(0.16,1,0.3,1); }
+
+/* ── LOADING ── */
+.loading {
+  display:flex; align-items:center; gap:10px;
+  padding:20px; color:var(--muted); font-size:14px;
+}
+.spinner {
+  width:20px; height:20px; border-radius:50%;
+  border:2px solid rgba(201,168,76,0.2);
+  border-top-color:var(--gold);
+  animation:spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* ── FOOTER ── */
+footer {
+  border-top:1px solid var(--border); padding:28px 0;
+  text-align:center; margin-top:60px;
+}
+footer p { font-size:11px; color:var(--muted); line-height:1.8; }
+footer strong { color:var(--gold-light); }
+
+/* ── RESPONSIVE ── */
+@media(max-width:720px) {
+  .tool-grid { grid-template-columns:1fr; }
+  .tools-grid { grid-template-columns:1fr 1fr; }
+  .hero h2 { font-size:28px; }
+  .tabs { flex-direction:column; }
+}
+</style>
+</head>
+<body>
+<div class="bg-orb bg-orb-1"></div>
+<div class="bg-orb bg-orb-2"></div>
+<div class="bg-orb bg-orb-3"></div>
+
+<div class="app">
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">✦</div>
+    <div class="logo-text">
+      <h1>DesignAI KZ</h1>
+      <p>AI-ассистент для дизайнеров Казахстана</p>
+    </div>
+  </div>
+  <div class="header-badge">
+    <span class="badge badge-gold">Магистерская диссертация 2026</span>
+    <span class="badge badge-teal">ЕНУ им. Гумилёва</span>
+  </div>
+</header>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-tag">Продукт исследования · ОП 7М02121 — Мода, дизайн</div>
+  <h2>Ваш персональный<br><em>AI-помощник</em> в дизайне</h2>
+  <p>Практический инструмент, демонстрирующий системную интеграцию AI-технологий в проектный процесс казахстанского дизайнера</p>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('prompt', this)">
+    <span class="tab-icon">✦</span> Генератор промптов
+  </button>
+  <button class="tab" onclick="switchTab('tools', this)">
+    <span class="tab-icon">◈</span> Навигатор инструментов
+  </button>
+  <button class="tab" onclick="switchTab('level', this)">
+    <span class="tab-icon">◎</span> Уровень интеграции
+  </button>
+</div>
+
+<!-- ════════════════ PANEL 1: PROMPT GENERATOR ════════════════ -->
+<div class="panel active" id="panel-prompt">
+  <div class="tool-grid">
+    <div class="tool-card">
+      <h3>Опишите вашу задачу</h3>
+
+      <div class="field">
+        <label>Тип проекта</label>
+        <select id="p-type">
+          <option value="">— выберите —</option>
+          <option value="brand">Фирменный стиль / брендинг</option>
+          <option value="smm">SMM-контент / соцсети</option>
+          <option value="poster">Плакат / афиша</option>
+          <option value="packaging">Упаковка</option>
+          <option value="logo">Логотип</option>
+          <option value="web">Веб-интерфейс / UI</option>
+          <option value="illustration">Иллюстрация</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>Для кого / тематика</label>
+        <input type="text" id="p-subject" placeholder="Например: казахская кофейня для молодёжи 20–35 лет">
+      </div>
+
+      <div class="field">
+        <label>Стилистика</label>
+        <div class="chips" id="style-chips">
+          <div class="chip" data-val="minimalist">Минимализм</div>
+          <div class="chip" data-val="bold geometric">Смелая геометрия</div>
+          <div class="chip" data-val="national kazakh motifs">Казахские мотивы</div>
+          <div class="chip" data-val="retro">Ретро</div>
+          <div class="chip" data-val="luxury editorial">Люкс</div>
+          <div class="chip" data-val="organic natural">Природный</div>
+          <div class="chip" data-val="flat design">Flat design</div>
+          <div class="chip" data-val="3d render photorealistic">3D реализм</div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Цветовой акцент</label>
+        <div class="chips" id="color-chips">
+          <div class="chip" data-val="gold and navy">Золото + синий</div>
+          <div class="chip" data-val="terracotta and cream">Терракота</div>
+          <div class="chip" data-val="emerald green">Изумрудный</div>
+          <div class="chip" data-val="monochrome black white">Ч/Б</div>
+          <div class="chip" data-val="warm earthy tones">Земляные тона</div>
+          <div class="chip" data-val="vibrant colorful">Яркий</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tool-card">
+      <h3>Дополнительные параметры</h3>
+
+      <div class="field">
+        <label>Инструмент для генерации</label>
+        <select id="p-tool">
+          <option value="midjourney">Midjourney</option>
+          <option value="dalle">DALL·E 3</option>
+          <option value="firefly">Adobe Firefly</option>
+          <option value="stable">Stable Diffusion</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>Настроение / ощущение</label>
+        <input type="text" id="p-mood" placeholder="Например: уютное, современное, вдохновляющее">
+      </div>
+
+      <div class="field">
+        <label>Что важно избежать</label>
+        <input type="text" id="p-avoid" placeholder="Например: клише, шаблонность, перегруженность">
+      </div>
+
+      <div class="field">
+        <label>Формат / размер</label>
+        <select id="p-format">
+          <option value="">— любой —</option>
+          <option value="square 1:1">Квадрат 1:1 (Instagram)</option>
+          <option value="portrait 4:5">Портрет 4:5</option>
+          <option value="landscape 16:9">Горизонталь 16:9</option>
+          <option value="story 9:16">Stories 9:16</option>
+          <option value="A4 poster">А4 постер</option>
+        </select>
+      </div>
+
+      <button class="btn-main" onclick="generatePrompt()">
+        ✦ Сгенерировать промпт и концепцию
+      </button>
+    </div>
+
+    <div class="tool-card full output-section" id="output-area" style="display:none;">
+      <div id="output-content"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════ PANEL 2: TOOLS NAVIGATOR ════════════════ -->
+<div class="panel" id="panel-tools">
+  <div style="text-align:center; margin-bottom:28px;">
+    <p style="color:var(--muted);font-size:14px;">Нажмите на инструмент — получите рекомендацию по применению в вашем проекте</p>
+  </div>
+
+  <div class="tools-grid">
+
+    <div class="tool-item featured" onclick="showToolInfo('midjourney')">
+      <span class="tool-badge-feat">★ Топ КЗ</span>
+      <span class="tool-emoji">🎨</span>
+      <div class="tool-name">Midjourney</div>
+      <div class="tool-desc">Генерация визуальных концепций. Используется 78% казахстанских дизайнеров</div>
+      <div class="tool-level">
+        <div class="level-dot filled"></div><div class="level-dot filled"></div>
+        <div class="level-dot filled"></div><div class="level-dot filled"></div><div class="level-dot"></div>
+      </div>
+    </div>
+
+    <div class="tool-item" onclick="showToolInfo('chatgpt')">
+      <span class="tool-emoji">💬</span>
+      <div class="tool-name">ChatGPT / Gemini</div>
+      <div class="tool-desc">Концепции, нейминг, брифинг, промпты. Текстовая AI для смыслов</div>
+      <div class="tool-level">
+        <div class="level-dot filled"></div><div class="level-dot filled"></div>
+        <div class="level-dot filled"></div><div class="level-dot filled"></div><div class="level-dot filled"></div>
+      </div>
+    </div>
+
+    <div class="tool-item" onclick="showToolInfo('firefly')">
+      <span class="tool-emoji">🔥</span>
+      <div class="tool-name">Adobe Firefly</div>
+      <div class="tool-desc">Генерация внутри Photoshop/Illustrator. Идеальна для коммерческих задач</div>
+      <div class="tool-level">
+        <div class="level-dot filled"></div><div class="level-dot filled"></div>
+        <div class="level-dot filled"></div><div class="level-dot"></div><div class="level-dot"></div>
+      </div>
+    </div>
+
+    <div class="tool-item featured" onclick="showToolInfo('figma')">
+      <span class="tool-badge-feat">UI/UX</span>
+      <span class="tool-emoji">◈</span>
+      <div class="tool-name">Figma + AI-плагины</div>
+      <div class="tool-desc">Проектирование интерфейсов с AI-автозаполнением и генерацией макетов</div>
+      <div class="tool-level">
+        <div class="level-dot filled"></div><div class="level-dot filled"></div>
+        <div class="level-dot filled"></div><div class="level-dot filled"></div><div class="level-dot"></div>
+      </div>
+    </div>
+
+    <div class="tool-item" onclick="showToolInfo('runway')">
+      <span class="tool-emoji">🎬</span>
+      <div class="tool-name">Runway ML</div>
+      <div class="tool-desc">Видео, анимация, моушн-дизайн с AI. Новое направление для КЗ-рынка</div>
+      <div class="tool-level">
+        <div class="level-dot filled"></div><div class="level-dot filled"></div>
+        <div class="level-dot"></div><div class="level-dot"></div><div class="level-dot"></div>
+      </div>
+    </div>
+
+    <div class="tool-item" onclick="showToolInfo('dalle')">
+      <span class="tool-emoji">🌐</span>
+      <div class="tool-name">DALL·E 3</div>
+      <div class="tool-desc">Генерация через ChatGPT. Точное следование текстовому описанию</div>
+      <div class="tool-level">
+        <div class="level-dot filled"></div><div class="level-dot filled"></div>
+        <div class="level-dot filled"></div><div class="level-dot"></div><div class="level-dot"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tool info popup -->
+  <div class="output-block" id="tool-info-block" style="display:none; margin-top:24px; max-width:700px; margin-left:auto; margin-right:auto;">
+    <div class="output-block-header">
+      <div class="output-block-title">
+        <div class="output-dot" style="background:var(--teal-light);"></div>
+        <span id="tool-info-title">Инструмент</span>
+      </div>
+    </div>
+    <div class="output-text" id="tool-info-text"></div>
+  </div>
+</div>
+
+<!-- ════════════════ PANEL 3: LEVEL CHECKER ════════════════ -->
+<div class="panel" id="panel-level">
+  <div class="level-form">
+    <div style="text-align:center;margin-bottom:32px;">
+      <p style="color:var(--muted);font-size:14px;max-width:480px;margin:0 auto;line-height:1.7;">
+        Концепция <strong style="color:var(--gold-light)">Method Gap</strong> из диссертации — проверьте свой уровень интеграции AI в проектную деятельность
+      </p>
+    </div>
+
+    <div class="level-q" id="q1">
+      <p><strong style="color:var(--white);">1.</strong> Как вы обычно используете AI в своей работе?</p>
+      <div class="level-options">
+        <button class="level-opt" onclick="answer(1,0)" data-q="1">Почти не использую</button>
+        <button class="level-opt" onclick="answer(1,1)" data-q="1">Иногда для картинок</button>
+        <button class="level-opt" onclick="answer(1,2)" data-q="1">На нескольких этапах</button>
+        <button class="level-opt" onclick="answer(1,3)" data-q="1">Во всём процессе системно</button>
+      </div>
+    </div>
+
+    <div class="level-q" id="q2">
+      <p><strong style="color:var(--white);">2.</strong> Как вы формулируете запрос (промпт) для AI?</p>
+      <div class="level-options">
+        <button class="level-opt" onclick="answer(2,0)" data-q="2">Пишу первое что приходит</button>
+        <button class="level-opt" onclick="answer(2,1)" data-q="2">Короткое описание</button>
+        <button class="level-opt" onclick="answer(2,2)" data-q="2">Учитываю стиль и аудиторию</button>
+        <button class="level-opt" onclick="answer(2,3)" data-q="2">Структурирую по параметрам</button>
+      </div>
+    </div>
+
+    <div class="level-q" id="q3">
+      <p><strong style="color:var(--white);">3.</strong> Что вы делаете с результатом, полученным от AI?</p>
+      <div class="level-options">
+        <button class="level-opt" onclick="answer(3,0)" data-q="3">Использую как есть</button>
+        <button class="level-opt" onclick="answer(3,1)" data-q="3">Немного правлю</button>
+        <button class="level-opt" onclick="answer(3,2)" data-q="3">Отбираю лучший вариант</button>
+        <button class="level-opt" onclick="answer(3,3)" data-q="3">Анализирую, дорабатываю, обосновываю</button>
+      </div>
+    </div>
+
+    <div class="level-q" id="q4">
+      <p><strong style="color:var(--white);">4.</strong> Как AI вписан в ваш проектный процесс?</p>
+      <div class="level-options">
+        <button class="level-opt" onclick="answer(4,0)" data-q="4">Никак — отдельно от работы</button>
+        <button class="level-opt" onclick="answer(4,1)" data-q="4">На одном этапе</button>
+        <button class="level-opt" onclick="answer(4,2)" data-q="4">На нескольких этапах</button>
+        <button class="level-opt" onclick="answer(4,3)" data-q="4">Встроен во весь цикл</button>
+      </div>
+    </div>
+
+    <div class="level-q" id="q5">
+      <p><strong style="color:var(--white);">5.</strong> Можете ли вы объяснить заказчику, зачем использовали AI?</p>
+      <div class="level-options">
+        <button class="level-opt" onclick="answer(5,0)" data-q="5">Нет, не задумывался</button>
+        <button class="level-opt" onclick="answer(5,1)" data-q="5">«Быстрее получилось»</button>
+        <button class="level-opt" onclick="answer(5,2)" data-q="5">Объясню какой инструмент</button>
+        <button class="level-opt" onclick="answer(5,3)" data-q="5">Обосную методологически</button>
+      </div>
+    </div>
+
+    <div id="level-result" style="display:none; margin-top:32px; animation:fadeUp 0.4s ease;">
+      <div class="output-block">
+        <div class="output-block-header">
+          <div class="output-block-title">
+            <div class="output-dot" style="background:var(--gold);"></div>
+            <span>Ваш уровень технологической интеграции</span>
+          </div>
+        </div>
+        <div id="level-result-content"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <p>
+    <strong>DesignAI KZ</strong> — практический продукт магистерской диссертации<br>
+    «Анализ и перспективы использования современных технологий в графическом дизайне Казахстана»<br>
+    Өмірзақ Анеля Қанатбекқызы · ЕНУ им. Л.Н. Гумилёва · ОП 7М02121 · 2026
+  </p>
+</footer>
+
+</div><!-- /app -->
+
+<script>
+// ══════════════════════════════════════════
+// TAB SWITCHING
+// ══════════════════════════════════════════
+function switchTab(id, btn) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('panel-' + id).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ══════════════════════════════════════════
+// CHIPS
+// ══════════════════════════════════════════
+document.querySelectorAll('.chips').forEach(container => {
+  container.querySelectorAll('.chip').forEach(chip => {
+    chip.addEventListener('click', () => chip.classList.toggle('selected'));
+  });
+});
+
+function getChips(id) {
+  return [...document.querySelectorAll(`#${id} .chip.selected`)]
+    .map(c => c.dataset.val).join(', ');
+}
+
+// ══════════════════════════════════════════
+// PROMPT GENERATOR
+// ══════════════════════════════════════════
+async function generatePrompt() {
+  const type    = document.getElementById('p-type').value;
+  const subject = document.getElementById('p-subject').value.trim();
+  const mood    = document.getElementById('p-mood').value.trim();
+  const avoid   = document.getElementById('p-avoid').value.trim();
+  const tool    = document.getElementById('p-tool').value;
+  const format  = document.getElementById('p-format').value;
+  const styles  = getChips('style-chips');
+  const colors  = getChips('color-chips');
+
+  if (!subject) {
+    document.getElementById('p-subject').focus();
+    document.getElementById('p-subject').style.borderColor = 'rgba(201,168,76,0.8)';
+    setTimeout(() => document.getElementById('p-subject').style.borderColor = '', 1500);
+    return;
+  }
+
+  const outArea = document.getElementById('output-area');
+  const outContent = document.getElementById('output-content');
+  outArea.style.display = 'block';
+  outContent.innerHTML = `<div class="loading"><div class="spinner"></div> Генерирую промпт и концепцию…</div>`;
+
+  const userMsg = `Ты — AI-ассистент для дизайнеров Казахстана. Помоги дизайнеру с проектом.
+
+Задача: ${type ? 'Тип — ' + type + '. ' : ''}${subject}
+${styles ? 'Стиль: ' + styles : ''}
+${colors ? 'Цвет: ' + colors : ''}
+${mood ? 'Настроение: ' + mood : ''}
+${avoid ? 'Избегать: ' + avoid : ''}
+${format ? 'Формат: ' + format : ''}
+Инструмент: ${tool}
+
+Ответь СТРОГО в этом формате — три блока:
+
+ПРОМПТ ДЛЯ ${tool.toUpperCase()}:
+[Готовый промпт на английском, профессиональный, 40-70 слов, с техническими параметрами для ${tool}]
+
+КОНЦЕПЦИЯ НА РУССКОМ:
+[Краткое описание визуальной концепции: идея, настроение, ключевые образы, цветовое решение — 3-4 предложения]
+
+ЭТАПЫ РАБОТЫ:
+[Нумерованный список: как использовать этот промпт в полноценном проектном процессе, 4-5 шагов]`;
+
+  try {
+    const resp = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 1000,
+        messages: [{ role: "user", content: userMsg }]
+      })
+    });
+    const data = await resp.json();
+    const text = data.content.map(b => b.text || '').join('');
+
+    // Parse blocks
+    const blocks = parseBlocks(text, tool);
+    outContent.innerHTML = blocks;
+
+  } catch(e) {
+    // Fallback — generate locally
+    outContent.innerHTML = generateLocal(type, subject, styles, colors, mood, avoid, tool, format);
+  }
+}
+
+function parseBlocks(text, tool) {
+  // Split by the known headers
+  const parts = text.split(/\n(?=ПРОМПТ|КОНЦЕПЦИЯ|ЭТАПЫ)/);
+  let html = '';
+
+  const blockDefs = [
+    { key: 'ПРОМПТ', color: '#C9A84C', label: 'Промпт для ' + tool.charAt(0).toUpperCase()+tool.slice(1), dot: '#C9A84C' },
+    { key: 'КОНЦЕПЦИЯ', color: '#2ABEAA', label: 'Концепция на русском', dot: '#2ABEAA' },
+    { key: 'ЭТАПЫ', color: '#4A90C4', label: 'Этапы работы в проекте', dot: '#4A90C4' },
+  ];
+
+  blockDefs.forEach(def => {
+    const part = parts.find(p => p.trim().startsWith(def.key));
+    if (!part) return;
+    const content = part.replace(/^[^\n]+\n/, '').trim();
+    const id = 'copy-' + def.key;
+    html += `
+    <div class="output-block">
+      <div class="output-block-header">
+        <div class="output-block-title">
+          <div class="output-dot" style="background:${def.dot};"></div>
+          <span>${def.label}</span>
+        </div>
+        <button class="copy-btn" onclick="copyText('${id}')">Скопировать</button>
+      </div>
+      <div class="output-text" id="${id}">${formatText(content)}</div>
+    </div>`;
+  });
+
+  return html || `<div class="output-block"><div class="output-text">${formatText(text)}</div></div>`;
+}
+
+function formatText(t) {
+  return t.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+          .replace(/\*(.+?)\*/g, '<em>$1</em>')
+          .replace(/\n/g, '<br>');
+}
+
+// Offline fallback generator
+function generateLocal(type, subject, styles, colors, mood, avoid, tool, format) {
+  const typeLabel = { brand:'branding identity', smm:'social media post', poster:'poster design', packaging:'packaging design', logo:'logo design', web:'UI/UX interface', illustration:'digital illustration' }[type] || 'graphic design';
+  const toolParams = {
+    midjourney: '--ar 1:1 --style raw --stylize 750 --v 6',
+    dalle: '',
+    firefly: 'style: graphic design, commercial',
+    stable: 'cfg_scale:7, steps:30, sampler:DPM++'
+  }[tool] || '';
+
+  const promptEN = `${subject}, ${typeLabel}${styles ? ', ' + styles : ''}${colors ? ', ' + colors : ''}${mood ? ', ' + mood + ' atmosphere' : ''}, professional graphic design, high quality, detailed, clean composition${format ? ', ' + format : ''} ${toolParams}`.replace(/\s+/g, ' ');
+
+  const promptBlock = `<div class="output-block">
+    <div class="output-block-header">
+      <div class="output-block-title"><div class="output-dot" style="background:#C9A84C;"></div><span>Промпт для ${tool.charAt(0).toUpperCase()+tool.slice(1)}</span></div>
+      <button class="copy-btn" onclick="copyText('p1')">Скопировать</button>
+    </div>
+    <div class="output-text" id="p1">${promptEN}</div>
+  </div>`;
+
+  const conceptBlock = `<div class="output-block">
+    <div class="output-block-header">
+      <div class="output-block-title"><div class="output-dot" style="background:#2ABEAA;"></div><span>Концепция на русском</span></div>
+    </div>
+    <div class="output-text">Проект для <strong>${subject}</strong>. ${styles ? 'Стилистика: ' + styles + '. ' : ''}${colors ? 'Цветовое решение: ' + colors + '. ' : ''}${mood ? 'Настроение — ' + mood + '. ' : ''}Визуальный язык сочетает профессиональный уровень исполнения с чёткой коммуникационной задачей. ${avoid ? 'Важно избежать: ' + avoid + '.' : ''}</div>
+  </div>`;
+
+  const stepsBlock = `<div class="output-block">
+    <div class="output-block-header">
+      <div class="output-block-title"><div class="output-dot" style="background:#4A90C4;"></div><span>Этапы работы в проекте</span></div>
+    </div>
+    <div class="output-text">
+      1. <strong>Концепция</strong> — уточните промпт в ChatGPT/Gemini, добавьте ценности бренда и ЦА<br>
+      2. <strong>Генерация</strong> — создайте 3-5 вариаций, не принимайте первый результат<br>
+      3. <strong>Анализ</strong> — сравните варианты по критериям: ЦА, стиль, оригинальность<br>
+      4. <strong>Доработка</strong> — скорректируйте вручную в Photoshop/Illustrator<br>
+      5. <strong>Обоснование</strong> — зафиксируйте, почему выбрано итоговое решение
+    </div>
+  </div>`;
+
+  return promptBlock + conceptBlock + stepsBlock;
+}
+
+async function copyText(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  await navigator.clipboard.writeText(el.innerText).catch(() => {});
+  event.target.textContent = 'Скопировано ✓';
+  event.target.style.color = 'var(--teal-light)';
+  setTimeout(() => { event.target.textContent = 'Скопировать'; event.target.style.color = ''; }, 2000);
+}
+
+// ══════════════════════════════════════════
+// TOOLS INFO
+// ══════════════════════════════════════════
+const TOOL_INFO = {
+  midjourney: {
+    title: 'Midjourney — генерация визуальных концепций',
+    text: `<strong>Когда использовать:</strong> этап поиска идеи, генерация вариантов для презентации заказчику, создание мудборда.<br><br>
+<strong>Лучшие практики по диссертации:</strong><br>
+— Создавайте не менее 3 разных промптов для одной задачи<br>
+— Не принимайте первый удачный результат как финальный<br>
+— Оценивайте по критериям: соответствие ЦА, стилистическая целостность, оригинальность<br><br>
+<strong>Уровень интеграции в КЗ:</strong> 78% дизайнеров используют, но преимущественно на инструментальном уровне (только генерация картинок). Системная интеграция — редкость.<br><br>
+<strong>Method Gap:</strong> инструмент доступен, но отсутствует модель его включения в проектный процесс.`
+  },
+  chatgpt: {
+    title: 'ChatGPT / Gemini — текстовая AI для концепций',
+    text: `<strong>Когда использовать:</strong> формулировка концепции, нейминг, работа с брифом, создание промптов для визуальных генераторов, анализ конкурентов.<br><br>
+<strong>Применение в проектном процессе:</strong><br>
+— Модуль 2 образовательного курса полностью посвящён этому инструменту<br>
+— Задача: не «написать текст», а сформулировать точное концептуальное ядро проекта<br>
+— Ключевой навык: уточнять запрос, пока результат не станет рабочим<br><br>
+<strong>Формула эффективного промпта:</strong> ЦА + задача + ценности + желаемое впечатление + что НЕ нужно`
+  },
+  firefly: {
+    title: 'Adobe Firefly — генерация внутри рабочего процесса',
+    text: `<strong>Преимущество:</strong> встроена прямо в Photoshop и Illustrator — не нужно переключаться между приложениями.<br><br>
+<strong>Идеальна для:</strong><br>
+— Генеративного заполнения фона (Generative Fill)<br>
+— Создания текстур и паттернов для коммерческих задач<br>
+— Безопасного использования в коммерческих проектах (обучена на лицензированном контенте)<br><br>
+<strong>Ограничение:</strong> менее «художественная» по сравнению с Midjourney — больше подходит для функциональных задач.`
+  },
+  figma: {
+    title: 'Figma + AI-плагины — проектирование интерфейсов',
+    text: `<strong>AI-возможности:</strong> автоматическое создание компонентов, генерация UI через плагины (Magician, Genius), Figma AI для автолейаута.<br><br>
+<strong>В контексте дизайна Казахстана:</strong> активно используется в веб и мобильных проектах. Digital-платформы — третья группа технологий в классификации диссертации.<br><br>
+<strong>Ключевая идея:</strong> Figma — не просто инструмент, а среда совместной работы. AI-плагины ускоряют рутину, освобождая время для концептуальных решений.`
+  },
+  runway: {
+    title: 'Runway ML — видео и анимация с AI',
+    text: `<strong>Возможности:</strong> генерация видео из текста/изображения, анимация статичных кадров, удаление фона в движении, ротоскопирование.<br><br>
+<strong>По данным опроса (n=80):</strong> только 18% казахстанских дизайнеров используют инструменты видео/анимации. Это перспективная ниша для специализации.<br><br>
+<strong>Применение:</strong> анимированные посты для SMM, промо-видео для брендов, контент для digital-платформ.`
+  },
+  dalle: {
+    title: 'DALL·E 3 — генерация через ChatGPT',
+    text: `<strong>Преимущество над Midjourney:</strong> точнее понимает детальные текстовые описания, лучше передаёт тексты на изображении, доступна прямо в ChatGPT.<br><br>
+<strong>Когда выбирать DALL·E:</strong><br>
+— Нужен точный контроль над деталями<br>
+— Важно сочетание с текстовым AI (ChatGPT) в одном интерфейсе<br>
+— Работа над концептуальными иллюстрациями<br><br>
+<strong>В проектном процессе:</strong> используйте ChatGPT для уточнения концепции, затем сразу генерируйте визуал — всё в одном окне.`
+  }
+};
+
+function showToolInfo(key) {
+  const info = TOOL_INFO[key];
+  if (!info) return;
+  const block = document.getElementById('tool-info-block');
+  document.getElementById('tool-info-title').textContent = info.title;
+  document.getElementById('tool-info-text').innerHTML = info.text;
+  block.style.display = 'block';
+  block.scrollIntoView({ behavior:'smooth', block:'nearest' });
+}
+
+// ══════════════════════════════════════════
+// LEVEL CHECKER
+// ══════════════════════════════════════════
+const answers = {};
+
+function answer(q, val) {
+  answers[q] = val;
+  // highlight selected
+  document.querySelectorAll(`[data-q="${q}"]`).forEach(b => b.classList.remove('sel'));
+  event.target.classList.add('sel');
+
+  if (Object.keys(answers).length === 5) {
+    setTimeout(showLevelResult, 400);
+  }
+}
+
+function showLevelResult() {
+  const total = Object.values(answers).reduce((a,b) => a+b, 0);
+  const max = 15;
+  const pct = Math.round((total / max) * 100);
+
+  let level, color, desc, advice;
+  if (total <= 4) {
+    level = 'Инструментальный уровень'; color = '#f0a070';
+    desc = 'Технологии используются эпизодически, без системы. Это типичная ситуация для 65% казахстанских дизайнеров (по данным диссертации). Именно здесь существует Method Gap.';
+    advice = 'Начните с Модуля 1 курса: поймите роль технологий в проектном процессе, а не только как «нажать кнопку».';
+  } else if (total <= 9) {
+    level = 'Ситуативный уровень'; color = '#C9A84C';
+    desc = 'Вы используете AI на отдельных этапах, но пока не выстроена целостная система. Хорошее начало — важно сделать следующий шаг.';
+    advice = 'Фокус на Модуле 4: попробуйте встроить AI во все этапы одного реального проекта от начала до конца.';
+  } else {
+    level = 'Системный уровень'; color = '#2ABEAA';
+    desc = 'Поздравляем! Вы демонстрируете именно тот уровень интеграции, который обосновывается в диссертации как целевой. AI встроен в логику вашего проектного мышления.';
+    advice = 'Ваш следующий шаг — передать эту модель другим. Именно для этого разработан образовательный курс.';
+  }
+
+  const bars = [
+    { name: 'Частота использования', val: ((answers[1]||0)/3)*100 },
+    { name: 'Качество промпта', val: ((answers[2]||0)/3)*100 },
+    { name: 'Работа с результатом', val: ((answers[3]||0)/3)*100 },
+    { name: 'Встроенность в процесс', val: ((answers[4]||0)/3)*100 },
+    { name: 'Способность обосновать', val: ((answers[5]||0)/3)*100 },
+  ];
+
+  const barsHtml = bars.map(b => `
+    <div class="result-bar">
+      <div class="result-bar-label">
+        <span class="result-bar-name">${b.name}</span>
+        <span class="result-bar-val">${Math.round(b.val)}%</span>
+      </div>
+      <div class="bar-track"><div class="bar-fill" style="width:0%;background:${color};" data-target="${b.val}"></div></div>
+    </div>`).join('');
+
+  document.getElementById('level-result-content').innerHTML = `
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;">
+      <div style="width:72px;height:72px;border-radius:50%;border:3px solid ${color};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <span style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;color:${color};">${pct}%</span>
+      </div>
+      <div>
+        <div style="font-size:18px;font-weight:600;color:${color};margin-bottom:4px;">${level}</div>
+        <div style="font-size:13px;color:var(--muted);line-height:1.5;">${desc}</div>
+      </div>
+    </div>
+    <div style="margin-bottom:20px;">${barsHtml}</div>
+    <div style="background:rgba(255,255,255,0.04);border-radius:10px;padding:14px 16px;border-left:3px solid ${color};">
+      <div style="font-size:11px;font-weight:600;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;">Рекомендация</div>
+      <div style="font-size:13px;color:#c0d4e8;line-height:1.6;">${advice}</div>
+    </div>`;
+
+  document.getElementById('level-result').style.display = 'block';
+  document.getElementById('level-result').scrollIntoView({ behavior:'smooth', block:'start' });
+
+  // Animate bars
+  setTimeout(() => {
+    document.querySelectorAll('.bar-fill[data-target]').forEach(el => {
+      el.style.width = el.dataset.target + '%';
+    });
+  }, 100);
+}
+</script>
+</body>
+</html>
